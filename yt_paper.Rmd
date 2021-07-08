@@ -1,24 +1,25 @@
 ---
 title: "Exploring potentially usable predictors to assess the relative popularity of videos on the YouTube platform with similar characteristics"
 author: "S. Pariente"
-date: "07/07/2021"
+date: "08/07/2021"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 options(knitr.duplicate.label = "allow")
 knitr::opts_chunk$set(echo = TRUE)
+if(!require(tidyverse)) install.packages("tidyverse")
+if(!require(lubridate)) install.packages("lubridate")
+if(!require(tidytext)) install.packages("tidytext")
+if(!require(textdata)) install.packages("textdata")
+if(!require(gridExtra)) install.packages("gridExtra")
+
 library(tidyverse)
 library(lubridate)
 library(tidytext)
 library(textdata)
 library(gridExtra)
-library(ggrepel)
-library(caret)
-library(moments)
-library(gtools)
 
-options(ggrepel.max.overlaps = Inf)
 options(warn=-1)
 
 load(file = "combined_data.RData")
@@ -53,21 +54,21 @@ For the purpose of this project, information on a sample of `r format(nrow(combi
 
 1. Generate a list of random word strings.  
 2. Feed this list to the aforementioned API, filtering for videos published after 01/01/2020, and select the first page of results for each string, representing up to 50 videos per string, from which the following identifiers were extracted:  
-   * ID of the video, a string of 11 characters, numbers, and signs  
-   * time at which the video was uploaded, from which the age of the video at the point of extraction, in days, was also computed,  
-   * ID of the content creator's channel, a string of 24 characters, numbers, and signs  
+   * ID of the video, a string of 11 characters, numbers, and signs
+   * time at which the video was uploaded, from which the age of the video at the point of extraction, in days, was also computed,
+   * ID of the content creator's channel, a string of 24 characters, numbers, and signs
    
 3. For each of the random word strings, the list of video IDs was concatenated, and then used as input for a second interface of the API, to gather additional information on the video:  
-   * full title of the video  
-   * number of views, likes, dislikes, and comments on the video  
-   * list of topics associated with the video, which to the best of this writer's knowledge is assigned by a specific YouTube algorithm  
-   * full description of the video, made by its creator  
-   * ID of the video category, assigned by the creator  
+   * full title of the video
+   * number of views, likes, dislikes, and comments on the video
+   * list of topics associated with the video, which to the best of this writer's knowledge is assigned by a specific YouTube algorithm
+   * full description of the video, made by its creator
+   * ID of the video category, assigned by the creator
 
 4. Similarly, for each of the random word strings, the list of channel IDs was concatenated, and then used as input for a third interface of the API, to gather additional data on the channel:  
-   * total number of subscribers  
-   * total number of videos  
-   * list of topics associated with the channel, assigned similarly to the videos'  
+   * total number of subscribers
+   * total number of videos
+   * list of topics associated with the channel, assigned similarly to the videos'
 
 5. The data thus gathered was then assembled into a single data set, from which observations with missing data, represented by NAs, was filtered out, for wrangling and exploration.  
   
@@ -90,7 +91,6 @@ p2 <- combined_data %>%
 
 grid.arrange(p1, p2)
 ```
-\newpage
 
 We quickly notice that both metrics are not normally distributed, with extremely large values being reported, compared to the mean. We can however look at a log10 transformation of the density plots :  
 
@@ -228,15 +228,15 @@ By doing so, our sample now contains `r format(nrow(wrangled_data), big.mark = "
 ## Defining additional possible predictors from our data  
 Before moving forwards, we will compute and add some possible predictors to our data set:  
 
-* number of votes, defined as the sum of likes and dislikes for a given video  
-* engagement ratio, defined as the sum of the number of comments and votes, divided by the number of views for a given video  
-* likes (and dislikes) per view, defined as the ratio of likes (respectively dislikes) by the number of views  
-* ratings odds, defined as the ratio between likes and dislikes  
-* number of characters in the title, knowing that the limit is 100, and that only up to 70 are visible without going to the video itself  
-* number of hashtags in the title and the description, which are built as a way to categorize videos by the creator using custom categories  
-* number of words in the title and the description  
-* proportion of capitalized letters in the title  
-* proportion of capitalized words in the title  
+* number of votes, defined as the sum of likes and dislikes for a given video
+* engagement ratio, defined as the sum of the number of comments and votes, divided by the number of views for a given video
+* likes (and dislikes) per view, defined as the ratio of likes (respectively dislikes) by the number of views
+* ratings odds, defined as the ratio between likes and dislikes
+* number of characters in the title, knowing that the limit is 100, and that only up to 70 are visible without going to the video itself
+* number of hashtags in the title and the description, which are built as a way to categorize videos by the creator using custom categories
+* number of words in the title and the description
+* proportion of capitalized letters in the title
+* proportion of capitalized words in the title
 
 We will also remove observations with 0 values in the number of likes, dislikes, or comments, and add the names of the categories to facilitate readability. 
 ```{r add predictors, echo=FALSE}
@@ -433,7 +433,7 @@ To mitigate the bias introduced in the number of results before that date, we wi
 ```{r age bias, echo=FALSE}
 mean_r <- round(mean)
 
-set.seed(1989)
+set.seed(5, sample.kind = "default")
 
 wrangled_data_u <- wrangled_data %>%
   filter(age_w < age_stable) %>%
@@ -583,7 +583,16 @@ Due to the assumed non-random nature of our API-based sampling approach, we are 
   
 We will start by looking at log10(views) as a function of the age of the video. 
 
-```{r views as f(time) 2, echo=FALSE}
+```{r views as f(time) 2, echo=FALSE, message=FALSE, warning=FALSE}
+if(!require(ggrepel)) install.packages("ggrepel")
+if(!require(caret)) install.packages("caret")
+if(!require(moments)) install.packages("moments")
+
+library(ggrepel)
+library(caret)
+library(moments)
+options(ggrepel.max.overlaps = Inf)
+
 exploration_data %>%
   group_by(age_w) %>%
   summarize(mean_v = mean(log10_views)) %>%
@@ -601,7 +610,7 @@ where $n_w$ represents the number of observations in our sample for the week whe
 ```{r views as f(time) model, echo=FALSE}
 time_mean <- exploration_data %>%
   group_by(age_w) %>%
-  summarize(time_mean = mean(log10_views))
+  summarize(time_pred = mean(log10_views))
 ```
   
 Using this estimate for $f_{1}$, we will compute the time residuals $residuals_t$ as follows:  
@@ -611,7 +620,7 @@ and add the values to our data set. We can then plot the density of these values
 ```{r time residuals, echo=FALSE}
 exploration_data <- exploration_data %>%
   left_join(time_mean, by = "age_w") %>%
-  mutate(resid_time = log10_views - time_mean)
+  mutate(resid_time = log10_views - time_pred)
 
 exploration_data %>%
   ggplot(aes(x = resid_time)) + 
@@ -805,6 +814,8 @@ final_data <- exploration_data %>%
   mutate(category_name = as.factor(category_name))
 
 #Visualize correlation between variables
+if(!require(corrplot)) install.packages("corrplot")
+
 library(corrplot)
 cor_final_data <- final_data %>% 
   select(3:ncol(final_data)) %>% 
@@ -895,7 +906,7 @@ plot(hclust(d_features), hang = -1, cex = 0.6, xlab = "Features", sub = "")
   
 Given the size of the matrix, the next step will be to simplify it for use in future models. We will do this through a dimension reduction through a matrix decomposition.  
 ```{r topics matrix decomposition 1, echo=FALSE}
-set.seed(1989)
+set.seed(5, sample.kind = "default")
 pca <- prcomp(topics_mat)
 var_explained <- cumsum(pca$sdev^2/sum(pca$sdev^2))
 cols <- which.max(var_explained >= 0.8)
@@ -975,8 +986,8 @@ Based on these plots, we can infer that:
 * PC8 differentiates between films and TV or generic entertainment videos
 * PC9 differentiates between sports and non-sport videos
 * PC10 differentiates between vehicles and non-vehicles videos
-* PC11 differentiates between politics-focused and other videos
-* PC12 differentiates between types of video games, from action / sports-oriented to role-playing ones
+* PC11 differentiates between types of video games, from action / sports-oriented to role-playing ones
+* PC12 differentiates between politics-focused and other videos
 * PC13 differentiates between types of video games, from slower paced strategy games to faster paced action-adventure games  
 
   
@@ -988,8 +999,12 @@ $$f(\varepsilon) = \begin{cases} 1 & \quad \text{if } \varepsilon > 0 \\
 where $\varepsilon$ represents the residuals after neutralizing the $time$ and $\log10(subscribers)$ impacts on $\log10(views)$, i.e. 
 $$\varepsilon = \log10(views) - \hat{f_1}(time) + \hat{f_2}(log10(subscribers))$$
 Given that $\log10(x)$ is a continuous monotonically non-decreasing function for all $x \in \mathbb{R}_+^*$, and the number of views is a positive integer (strictly positive in our sample), this means that if $\varepsilon$ is higher than 0, the video has received more views than a video of a similar age and from a channel with a similar number of subscribers would be expected to receive, based on our sample.  
-```{r binary outcome, echo=FALSE}
+```{r binary outcome, echo=FALSE, message=FALSE, warning=FALSE}
 remove(p1, p2, p3, p4)
+if(!require(gtools)) install.packages("gtools")
+
+library(gtools)
+
 frontier <- 0
 
 fit_data <- fit_data %>%
@@ -998,7 +1013,7 @@ fit_data <- fit_data %>%
 We next split the data into a training and a test set, to use in the modeling phase. For this step, we use a random data partition, keeping 20% of the sample for testing. Since we will be looking into numerical categorization algorithms as well, we create a dedicated subset of training and test sets, by removing the column containing category names from the regular training and test sets.  
 ```{r creating sets, echo=FALSE}
 #Create training and test sets
-set.seed(1)
+set.seed(5, sample.kind = "default")
 test_ind <- createDataPartition(fit_data$resid_dist,
                                 times = 1,
                                 p = 0.2,
@@ -1032,7 +1047,7 @@ train_x_num <- x_num[-test_ind,]
 ## Assess baseline accuracy, through random guessing  
 To assess the benefits of our models, we need to define a simple approach to use as baseline. To this end, we will randomly guess whether the video has an above or below average observation, i.e. assign it a 0 or 1 value in our approach.  
 ```{r topics random guess, echo=FALSE}
-set.seed(5)
+set.seed(5, sample.kind = "default")
 random_test <- sample(0:1, length(test_y), replace = T)
 r_acc <- mean(random_test == test_y)
 
@@ -1045,10 +1060,13 @@ As our first approach, we will use a classification tree algorithm to try and de
 categorical, and the algorithm generally look for the best variable-based splits to minimize the loss function (in our case the Gini index).  
 A benefit of a decision tree is its readability and ease of use outside of algorithms. We will use the `rpart` package in R to this end, and tune the model using complexity parameters ranging from 0.0001 to 0.0021.  
 For this model, and for all following ones, we will use a ten-fold cross validation on our training set, with 10% of the observations in each sample.  
-```{r rpart, echo=FALSE}
+```{r rpart, echo=FALSE, message=FALSE, warning=FALSE}
+if(!require(rpart)) install.packages("rpart")
+if(!require(rpart.plot)) install.packages("rpart.plot")
+
 library(rpart)
 library(rpart.plot)
-set.seed(5)
+set.seed(5, sample.kind = "default")
 cps <- seq(0.0001, 0.0021, length.out = 21)
 
 fit_rpart <- train(x = train_x,
@@ -1084,8 +1102,10 @@ We can notice on this tree the relative importance of the number of votes per co
 While not as powerful as a human-legible algorithm as a single decision tree, we will try to see if using a random forests algorithm can lead to an improved accuracy. The goal of this type of algorithm is to improve prediction performance and reduce instability by averaging multiple decision trees (a forest of trees constructed with randomness).  
 To this end, we will train an algorithm using the `Rborist` package in R, tuning it using nodes ranging from 12 to 16, and testing 2 predictors for each given split.  
 ```{r random forests, echo=FALSE, message=FALSE, warning=FALSE}
+if(!require(Rborist)) install.packages("Rborist")
+
 library(Rborist)
-set.seed(5)
+set.seed(5, sample.kind = "default")
 
 nodes <- 12:16
 
@@ -1112,9 +1132,11 @@ The results show the model with the best accuracy uses `r bfit` nodes. Using our
 Another approach we can use on our classification problem are random ferns. While classification tree and random forests use a standard naive Bayes approach, which considers all predictors / features are conditionally independent for a given outcome, random ferns looks into possible groups of interdependent features, with each group instead independent from the other.  
 While this approach is more useful for a very large number of predictors (e.g. in image-based algorithms), we can still assess if the accuracy of trees and forests can be improved here. We will use depths ranging from 13 to 16 for tuning purposes in the training phase.  
 ```{r random ferns, echo=FALSE, message=FALSE, warning=FALSE}
+if(!require(rFerns)) install.packages("rFerns")
+
 library(rFerns)
 invisible(gc())
-set.seed(5)
+set.seed(5, sample.kind = "default")
 depths <- 13:16
 fit_rfern <- train(x = train_x,
                    y = train_y,
@@ -1138,7 +1160,7 @@ The results show the model with the best accuracy has a depth of `r bfit`. Using
 ## Linear discriminant analysis  
 After removing non-numeric values from our test and train sets, numeric classification approaches can be used. Since our number of predictors remains moderate, we can start by using a linear discriminant analysis model. This however assumes that the variables are multivariate normal, and that the correlation structure is the same for all classes.  
 ```{r LDA, echo=FALSE}
-set.seed(5)
+set.seed(5, sample.kind = "default")
 
 train_x_f <- train_x %>%
   mutate(category_name = as.factor(category_name))
@@ -1160,7 +1182,7 @@ Next, we will use a k-nearest-neighbors model. Since this is a situation where w
 For tuning purposes, we use a number of neighbors ranging from 70 to 140.  
 ```{r KNN, echo=FALSE}
 invisible(gc())
-set.seed(5)
+set.seed(5, sample.kind = "default")
 ks <- seq(70, 140, 10)
 
 fit_knn <- train(x = train_x_num,
@@ -1185,9 +1207,11 @@ Using the test set, we find the model has a maximum accuracy of `r round(knn_acc
 Lastly, a neural network can be trained on our data set. We will use a single-hidden-layer feed-forward neural network, through the `nnet` package in R. Feed-forward neural networks are neural networks where connections between units are not cyclical: the information flows one way, from the input nodes to the output nodes, after going through the hidden layer. Neural networks are algorithms based on the biological neural networks, that, on a basic level, work by adding weighted inputs in each neuron, to which a $bias$ value can be added, and the results then is used through an activation function to determine whether the neuron is activated.   
 To tune the model, between 10 and 20 units in the hidden layer were used, with weight decays ranging from 0.15 to 0.25.  
 ```{r nnet, echo=FALSE, message=FALSE, warning=FALSE}
+if(!require(nnet)) install.packages("nnet")
+
 library(nnet)
 invisible(gc())
-set.seed(5)
+set.seed(5, sample.kind = "default")
 sizes <- seq(10, 20, 5) #number of units in the hidden layer
 decays <- seq(0.15, 0.25, 0.05) #weight decays
 
