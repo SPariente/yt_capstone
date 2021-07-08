@@ -312,7 +312,7 @@ s_test <- wrangled_data %>%
 #Remove time bias in sample size
 mean_r <- round(mean)
 
-set.seed(1989)
+set.seed(5, sample.kind = "default")
 
 wrangled_data_u <- wrangled_data %>%
   filter(age_w < age_stable) %>%
@@ -471,11 +471,11 @@ exploration_data %>%
 #Neutralize time effect on log10(views)
 time_mean <- exploration_data %>%
   group_by(age_w) %>%
-  summarize(time_mean = mean(log10_views))
+  summarize(time_pred = mean(log10_views))
 
 exploration_data <- exploration_data %>%
   left_join(time_mean, by = "age_w") %>%
-  mutate(resid_time = log10_views - time_mean)
+  mutate(resid_time = log10_views - time_pred)
 
 #Plot the time residuals
 exploration_data %>%
@@ -760,15 +760,12 @@ topics_mat %>%
   mutate(share = ./nrow(exploration_data))
 
 #Decompose the matrix
-set.seed(1989)
+set.seed(5, sample.kind = "default")
 pca <- prcomp(topics_mat)
 var_explained <- cumsum(pca$sdev^2/sum(pca$sdev^2))
 cols <- which.max(var_explained >= 0.8)
 
 plot(var_explained, ylim = c(0,1), ylab = "Proportion of variability explained")
-
-reduced_mat <- pca$x[,1:cols]
-fit_data <- cbind(final_data, reduced_mat)
 
 pcs <- data.frame(pca$rotation, name = colnames(topics_mat))
 p1 <- pcs %>%  ggplot(aes(PC1, PC2)) + 
@@ -849,7 +846,7 @@ fit_data %>%
   summarize(mean_v = mean(resid_views))
 
 #Create training and test sets
-set.seed(1)
+set.seed(5, sample.kind = "default")
 test_ind <- createDataPartition(fit_data$resid_dist,
                                 times = 1,
                                 p = 0.2,
@@ -880,7 +877,7 @@ test_x_num <- x_num[test_ind,]
 train_x_num <- x_num[-test_ind,]
 
 #Look at accuracy of randomly guessing
-set.seed(5)
+set.seed(5, sample.kind = "default")
 random_test <- sample(0:1, length(test_y), replace = T)
 r_acc <- mean(random_test == test_y)
 
@@ -892,7 +889,7 @@ if(!require(rpart.plot)) install.packages("rpart.plot")
 
 library(rpart)
 library(rpart.plot)
-set.seed(5)
+set.seed(5, sample.kind = "default")
 cps <- seq(0.0001, 0.0021, length.out = 21)
 
 fit_rpart <- train(x = train_x,
@@ -932,7 +929,7 @@ tree_terms
 if(!require(Rborist)) install.packages("Rborist")
 
 library(Rborist)
-set.seed(5)
+set.seed(5, sample.kind = "default")
 
 nodes <- 12:16
 
@@ -959,7 +956,7 @@ if(!require(rFerns)) install.packages("rFerns")
 
 library(rFerns)
 invisible(gc())
-set.seed(5)
+set.seed(5, sample.kind = "default")
 depths <- 13:16
 fit_rfern <- train(x = train_x,
                    y = train_y,
@@ -980,7 +977,7 @@ accuracies <- bind_rows(accuracies,
                         tibble(model = "Random ferns", accuracy = round(rfern_acc,3)))
 
 #Fit a linear discriminant analysis model
-set.seed(5)
+set.seed(5, sample.kind = "default")
 
 train_x_f <- train_x %>%
   mutate(category_name = as.factor(category_name))
@@ -997,7 +994,7 @@ accuracies <- bind_rows(accuracies,
 
 #Fit a k-nearest neighbors model
 invisible(gc())
-set.seed(5)
+set.seed(5, sample.kind = "default")
 ks <- seq(70, 140, 10)
 
 fit_knn <- train(x = train_x_num,
@@ -1023,7 +1020,7 @@ if(!require(nnet)) install.packages("nnet")
 
 library(nnet)
 invisible(gc())
-set.seed(5)
+set.seed(5, sample.kind = "default")
 sizes <- seq(10, 20, 5) #number of units in the hidden layer
 decays <- seq(0.15, 0.25, 0.05) #weight decays
 
