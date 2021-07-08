@@ -5,6 +5,6 @@ Contents:
 - yt_api.R = data gathering script - requires a valid YouTube API key to be used
 - yt_paper.pdf = PDF version of the final report
 - yt_paper.Rmd = RMarkdown script for the final report
-- combined_data.RData = full data set gathered
-- exploration_data.RData = wrangled data used for exploration
-- yt_categories.RData = table containing names of YouTube categories
+- combined_data.RData = full data set gathered (using LFS: to be downloaded individually)
+- exploration_data.RData = wrangled data used for exploration (using LFS: to be downloaded individually)
+- yt_categories.RData = table containing names of YouTube categories (using LFS: to be downloaded individually)
